@@ -1,0 +1,72 @@
+package com.example.backend.controller;
+
+import com.example.backend.model.dto.UserRequest;
+import com.example.backend.model.dto.UserResponse;
+import com.example.backend.service.UserService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.net.URI;
+import java.util.List;
+
+
+/**
+ * ユーザーAPIのエンドポイント定義。
+ * 入出力のマッピングと呼び出しに専念し、ビジネスロジックは Service に委譲する。
+ *
+ * === 新規エンドポイント追加の手順 ===
+ * 1. model/entity にテーブルに対応するエンティティを追加（無ければ）
+ * 2. resources/db/migration に Flyway マイグレーションSQLを追加
+ * 3. repository にリポジトリインターフェースを追加
+ * 4. model/dto にリクエスト/レスポンスDTOを追加
+ * 5. service にインターフェースと実装(impl)を追加してビジネスロジックを実装
+ * 6. controller にこのクラスのようにエンドポイントを追加し、Serviceを呼び出す
+ * 7. 必要ならテストを追加（src/test 配下）
+ */
+@RestController
+@RequestMapping("/api/v1/users")
+@RequiredArgsConstructor
+@Tag(name = "User", description = "ユーザー管理API")
+public class UserController {
+
+    private final UserService userService;
+
+    @GetMapping
+    @Operation(summary = "ユーザー一覧取得")
+    public ResponseEntity<List<UserResponse>> getUsers() {
+        return ResponseEntity.ok(userService.findAll());
+    }
+
+    @GetMapping("/{id}")
+    @Operation(summary = "ユーザー単体取得")
+    public ResponseEntity<UserResponse> getUser(@PathVariable Long id) {
+        return ResponseEntity.ok(userService.findById(id));
+    }
+
+    @PostMapping
+    @Operation(summary = "ユーザー新規作成")
+    public ResponseEntity<UserResponse> createUser(@Valid @RequestBody UserRequest request) {
+        UserResponse created = userService.create(request);
+        return ResponseEntity
+                .created(URI.create("/api/v1/users/" + created.getId()))
+                .body(created);
+    }
+
+    @PutMapping("/{id}")
+    @Operation(summary = "ユーザー更新")
+    public ResponseEntity<UserResponse> updateUser(@PathVariable Long id, @Valid @RequestBody UserRequest request) {
+        return ResponseEntity.ok(userService.update(id, request));
+    }
+
+    @DeleteMapping("/{id}")
+    @Operation(summary = "ユーザー削除")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteUser(@PathVariable Long id) {
+        userService.delete(id);
+    }
+}

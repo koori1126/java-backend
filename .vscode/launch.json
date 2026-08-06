@@ -1,0 +1,16 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "BackendApplication (local / .env切り替え対応)",
+            "request": "launch",
+            "mainClass": "com.example.backend.BackendApplication",
+            "projectName": "backend-api",
+            "envFile": "${workspaceFolder}/.env",
+            "env": {
+                "SPRING_PROFILES_ACTIVE": "local"
+            }
+        }
+    ]
+}

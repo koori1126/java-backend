@@ -1,0 +1,34 @@
+# systemd ユニットファイル。
+# 配置場所: /etc/systemd/system/backend-api.service
+#
+# 使い方:
+#   sudo cp deploy/backend-api.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now backend-api
+#
+[Unit]
+Description=Backend API (Spring Boot)
+After=network.target
+
+[Service]
+Type=simple
+User=backendapp
+Group=backendapp
+
+# jarの配置先。デプロイのたびにこのパスへ新しいjarを配置する運用を想定
+WorkingDirectory=/opt/backend-api
+ExecStart=/usr/bin/java -jar /opt/backend-api/backend-api.jar
+
+# 接続情報や動作環境は環境変数ファイルから読み込む(機密情報をユニットファイルに直書きしない)
+EnvironmentFile=/opt/backend-api/backend-api.env
+
+# 異常終了時は自動再起動
+Restart=on-failure
+RestartSec=5
+
+# ログはjournalctlに集約される(標準出力/標準エラーがそのままjournalへ)
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

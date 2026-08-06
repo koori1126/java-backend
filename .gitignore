@@ -1,0 +1,10 @@
+target/
+*.class
+*.log
+.idea/
+*.iml
+.vscode/*
+!.vscode/launch.json
+.env
+deploy/backend-api.env
+HELP.md
