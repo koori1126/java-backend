@@ -1,17 +1,29 @@
 package com.example.backend.service.impl;
 
 import com.example.backend.exception.ResourceNotFoundException;
+import com.example.backend.model.dto.CsvImportResult;
 import com.example.backend.model.dto.UserRequest;
 import com.example.backend.model.dto.UserResponse;
 import com.example.backend.model.entity.User;
 import com.example.backend.repository.UserRepository;
 import com.example.backend.service.UserService;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validator;
 import lombok.RequiredArgsConstructor;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVRecord;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
-
+import java.util.Set;
 
 /**
  * UserService の実装。
@@ -27,6 +39,13 @@ import java.util.List;
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
+    private final Validator validator;
+
+    /**
+     * CSVのヘッダー行に期待する列名。
+     * 列の順序ではなく列名でマッピングするため、順不同でも動作する。
+     */
+    private static final String[] CSV_HEADERS = {"name", "email", "firstname", "familyname"};
 
     @Override
     @Transactional(readOnly = true)
@@ -48,7 +67,7 @@ public class UserServiceImpl implements UserService {
         User user = new User();
         user.setName(request.getName());
         user.setEmail(request.getEmail());
-        user.setFastname(request.getFastname());
+        user.setFirstname(request.getFirstname());
         user.setFamilyname(request.getFamilyname());
         return UserResponse.from(userRepository.save(user));
     }
@@ -58,7 +77,7 @@ public class UserServiceImpl implements UserService {
         User user = getActiveUserOrThrow(id);
         user.setName(request.getName());
         user.setEmail(request.getEmail());
-        user.setFastname(request.getFastname());
+        user.setFirstname(request.getFirstname());
         user.setFamilyname(request.getFamilyname());
         return UserResponse.from(userRepository.save(user));
     }
@@ -68,6 +87,84 @@ public class UserServiceImpl implements UserService {
         User user = getActiveUserOrThrow(id);
         user.setDelFlag(true);
         userRepository.save(user);
+    }
+
+    /**
+     * CSVの1行が name, email, firstname, familyname の列を持つ前提。
+     * 例:
+     *   name,email,firstname,familyname
+     *   山田太郎,taro@example.com,Taro,Yamada
+     *
+     * 1行ごとにBean Validationのアノテーション(UserRequestの@Email等)を
+     * 適用して検証し、エラーがあった行はスキップして次の行を処理する。
+     * 1件でも成功した分はDBに反映される(全体をロールバックしない方式)。
+     */
+    @Override
+    public CsvImportResult importFromCsv(MultipartFile file) throws IOException {
+        List<CsvImportResult.RowError> errors = new ArrayList<>();
+        int successCount = 0;
+        int totalCount = 0;
+
+        CSVFormat format = CSVFormat.DEFAULT.builder()
+                .setHeader(CSV_HEADERS)
+                .setSkipHeaderRecord(true)
+                .setTrim(true)
+                .setIgnoreHeaderCase(true)
+                .build();
+
+        try (Reader reader = new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8);
+             CSVParser parser = new CSVParser(reader, format)) {
+
+            for (CSVRecord record : parser) {
+                totalCount++;
+                // ヘッダー行を1行目として数えるため +1
+                int lineNumber = (int) record.getRecordNumber() + 1;
+
+                UserRequest request = new UserRequest();
+                request.setName(getOrNull(record, "name"));
+                request.setEmail(getOrNull(record, "email"));
+                request.setFirstname(getOrNull(record, "firstname"));
+                request.setFamilyname(getOrNull(record, "familyname"));
+
+                Set<ConstraintViolation<UserRequest>> violations = validator.validate(request);
+                if (!violations.isEmpty()) {
+                    String reason = violations.stream()
+                            .map(v -> v.getPropertyPath() + ": " + v.getMessage())
+                            .reduce((a, b) -> a + " / " + b)
+                            .orElse("入力値が不正です");
+                    errors.add(CsvImportResult.RowError.builder()
+                            .lineNumber(lineNumber)
+                            .reason(reason)
+                            .build());
+                    continue;
+                }
+
+                try {
+                    create(request);
+                    successCount++;
+                } catch (Exception e) {
+                    errors.add(CsvImportResult.RowError.builder()
+                            .lineNumber(lineNumber)
+                            .reason("登録に失敗しました: " + e.getMessage())
+                            .build());
+                }
+            }
+        }
+
+        return CsvImportResult.builder()
+                .totalCount(totalCount)
+                .successCount(successCount)
+                .failureCount(errors.size())
+                .errors(errors)
+                .build();
+    }
+
+    private String getOrNull(CSVRecord record, String column) {
+        if (!record.isSet(column)) {
+            return null;
+        }
+        String value = record.get(column);
+        return (value == null || value.isBlank()) ? null : value;
     }
 
     private User getActiveUserOrThrow(Long id) {

@@ -1,5 +1,6 @@
 package com.example.backend.controller;
 
+import com.example.backend.model.dto.CsvImportResult;
 import com.example.backend.model.dto.UserRequest;
 import com.example.backend.model.dto.UserResponse;
 import com.example.backend.service.UserService;
@@ -8,9 +9,12 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.net.URI;
 import java.util.List;
 
@@ -68,5 +72,20 @@ public class UserController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteUser(@PathVariable Long id) {
         userService.delete(id);
+    }
+
+    /**
+     * CSVファイルからユーザーを一括登録する。
+     * ヘッダー行に name,email,firstname,familyname の列名を含むCSVを受け付ける。
+     * 1行でもエラーがあっても処理全体は中断せず、行ごとの成否をまとめて返す。
+     */
+    @PostMapping(value = "/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "CSVによるユーザー一括登録")
+    public ResponseEntity<CsvImportResult> importUsers(@RequestParam("file") MultipartFile file) throws IOException {
+        if (file.isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+        CsvImportResult result = userService.importFromCsv(file);
+        return ResponseEntity.ok(result);
     }
 }

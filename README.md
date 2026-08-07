@@ -101,6 +101,50 @@ Redwood（Oracle互換）モードでは、クォートしない識別子は **�
 このパターンに従えば、既存の `User` 関連ファイル一式をほぼそのままコピーして
 名前を置き換えるだけで新しいリソースを追加できます。
 
+## CSVによるユーザー一括登録
+
+`POST /api/v1/users/import` に、`multipart/form-data`形式で`file`というキーで
+CSVファイルを送ると、複数ユーザーを一括登録できます。
+
+**CSVの形式(1行目はヘッダー)**
+
+```csv
+name,email,firstname,familyname
+山田太郎,taro@example.com,Taro,Yamada
+鈴木花子,hanako@example.com,Hanako,Suzuki
+```
+
+列の順序は自由(列名でマッピングしているため)。文字コードはUTF-8を想定しています。
+
+**Postmanでの送信方法**
+
+- Method: `POST`
+- URL: `http://localhost:8080/api/v1/users/import`
+- Body: `form-data` を選択 → キー`file`(型は`File`に変更) → 値としてCSVファイルを選択
+
+**レスポンス例**
+
+1行ごとに検証し、エラーがあった行はスキップして処理を続行します（1行のエラーで
+全体を失敗させない方式）。結果は以下のような形式で返ります。
+
+```json
+{
+  "totalCount": 3,
+  "successCount": 2,
+  "failureCount": 1,
+  "errors": [
+    { "lineNumber": 3, "reason": "email: email の形式が不正です" }
+  ]
+}
+```
+
+`lineNumber`はCSVファイル上の行番号（ヘッダー行を1行目として数える）です。
+
+**新しいCSV列を追加したくなったら**
+
+`UserServiceImpl`内の`CSV_HEADERS`配列と、CSV読み込み処理(`importFromCsv`メソッド)を、
+対象のフィールドに合わせて修正してください。
+
 ## 接続先の切り替え方法(開発用PostgreSQL ⇔ 開発環境のEDB等)
 
 コードや`application-local.yml`を書き換える必要はありません。接続情報はすべて

@@ -39,14 +39,14 @@ class UserControllerTest {
         UserRequest request = new UserRequest();
         request.setName("Taro Yamada");
         request.setEmail("taro@example.com");
-        request.setFastname("Taro");
+        request.setFirstname("Taro");
         request.setFamilyname("Yamada");
 
         UserResponse response = UserResponse.builder()
                 .id(1L)
                 .name("Taro Yamada")
                 .email("taro@example.com")
-                .fastname("Taro")
+                .firstname("Taro")
                 .familyname("Yamada")
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())

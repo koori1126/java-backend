@@ -5,16 +5,16 @@
 -- すべての識別子をダブルクォート+小文字で統一しています。
 
 CREATE TABLE "public"."users" (
-    "id"         BIGSERIAL     NOT NULL,
-    "name"       VARCHAR(50),
-    "email"      VARCHAR(100),
-    "del_flag"   BOOLEAN,
-    "created_at" TIMESTAMP(6)  NOT NULL DEFAULT now(),
-    "created_by" VARCHAR(255),
-    "updated_at" TIMESTAMP(6)  NOT NULL DEFAULT now(),
-    "updated_by" VARCHAR(255),
-    "fastname"   VARCHAR(50),
-    "familyname" VARCHAR(50),
+    "id"          BIGSERIAL     NOT NULL,
+    "name"        VARCHAR(50),
+    "email"       VARCHAR(100),
+    "firstname"   VARCHAR(50),
+    "familyname"  VARCHAR(50),
+    "del_flag"    BOOLEAN,
+    "created_at"  TIMESTAMP(6)  NOT NULL DEFAULT now(),
+    "created_by"  VARCHAR(255),
+    "updated_at"  TIMESTAMP(6)  NOT NULL DEFAULT now(),
+    "updated_by"  VARCHAR(255),
     PRIMARY KEY ("id")
 );
 

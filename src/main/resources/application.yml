@@ -18,6 +18,12 @@ spring:
     locations: classpath:db/migration
     baseline-on-migrate: true
 
+  servlet:
+    multipart:
+      # CSV一括登録用。大きめのCSVを想定して上限を設定(必要に応じて調整)
+      max-file-size: 10MB
+      max-request-size: 10MB
+
 server:
   port: ${SERVER_PORT:8080}
 

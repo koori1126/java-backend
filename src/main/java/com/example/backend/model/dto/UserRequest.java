@@ -21,8 +21,8 @@ public class UserRequest {
     @Size(max = 100)
     private String email;
 
-    @Size(max = 50, message = "fastname は50文字以内で入力してください")
-    private String fastname;
+    @Size(max = 50, message = "firstname は50文字以内で入力してください")
+    private String firstname;
 
     @Size(max = 50, message = "familyname は50文字以内で入力してください")
     private String familyname;

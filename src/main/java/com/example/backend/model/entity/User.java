@@ -38,6 +38,12 @@ public class User {
     @Column(name = "email", length = 100)
     private String email;
 
+    @Column(name = "firstname", length = 50)
+    private String firstname;
+
+    @Column(name = "familyname", length = 50)
+    private String familyname;
+
     @Column(name = "del_flag")
     private Boolean delFlag;
 
@@ -52,12 +58,6 @@ public class User {
 
     @Column(name = "updated_by")
     private String updatedBy;
-
-    @Column(name = "fastname", length = 50)
-    private String fastname;
-
-    @Column(name = "familyname", length = 50)
-    private String familyname;
 
     @PrePersist
     protected void onCreate() {

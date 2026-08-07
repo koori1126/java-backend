@@ -19,9 +19,9 @@
 
     <properties>
         <java.version>21</java.version>
-        <springdoc.version>2.6.0</springdoc.version>
+        <springdoc.version>2.8.17</springdoc.version>
         <!-- Spring Bootのデフォルト管理バージョンを、指定されたバージョンに固定 -->
-        <postgresql.version>42.7.3.5</postgresql.version>
+        <postgresql.version>42.7.3</postgresql.version>
     </properties>
 
     <dependencies>
@@ -61,7 +61,7 @@
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
-            <!-- バージョンは上記 postgresql.version プロパティ(42.7.3.5)で固定されます -->
+            <!-- バージョンは上記 postgresql.version プロパティ(42.7.3)で固定されます -->
         </dependency>
 
         <!-- Flyway: DBマイグレーション -->
@@ -93,6 +93,13 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
+        </dependency>
+
+        <!-- CSV読み込み(ユーザー一括登録機能で使用) -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-csv</artifactId>
+            <version>1.11.0</version>
         </dependency>
     </dependencies>
 

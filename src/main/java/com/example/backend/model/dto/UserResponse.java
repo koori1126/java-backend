@@ -6,7 +6,6 @@ import lombok.Getter;
 
 import java.time.LocalDateTime;
 
-
 /**
  * ユーザー取得レスポンス用DTO
  */
@@ -17,7 +16,7 @@ public class UserResponse {
     private Long id;
     private String name;
     private String email;
-    private String fastname;
+    private String firstname;
     private String familyname;
     private LocalDateTime createdAt;
     private String createdBy;
@@ -29,7 +28,7 @@ public class UserResponse {
                 .id(user.getId())
                 .name(user.getName())
                 .email(user.getEmail())
-                .fastname(user.getFastname())
+                .firstname(user.getFirstname())
                 .familyname(user.getFamilyname())
                 .createdAt(user.getCreatedAt())
                 .createdBy(user.getCreatedBy())
