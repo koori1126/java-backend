@@ -8,10 +8,12 @@ spring:
     password: <パスワード>
     driver-class-name: org.postgresql.Driver
 
-  jpa:
-    show-sql: true
-
 logging:
   level:
     com.example.backend: DEBUG
-    org.hibernate.SQL: DEBUG
+    com.example.backend.mapper: DEBUG
+
+app:
+  cors:
+    # フロントエンド(Next.js開発サーバー)からのアクセスを許可
+    allowed-origins: http://localhost:3000

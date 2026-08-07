@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Log4j2設定ファイル。
+  拡張子は「-spring.xml」にすることで、application.yml/application-{profile}.yml
+  内の logging.level.* 設定を読み込んだ上でこの設定が適用される
+  (Spring Bootのログシステム初期化順序に対応するための命名規則)。
+
+  traceId(TraceIdFilterでSLF4JのMDCに設定)は、Log4j2でも %X{traceId} という
+  同じパターンでそのまま出力できる(spring-boot-starter-log4j2に含まれる
+  log4j-slf4j2-implブリッジ経由でMDCの内容がそのままThreadContextに渡るため、
+  アプリ側のコード(TraceIdFilter等)は変更不要)。
+-->
+<Configuration status="WARN">
+
+    <Properties>
+        <!-- ログ出力先ディレクトリ。環境変数 LOG_PATH で上書き可能(未指定時は ./logs) -->
+        <Property name="LOG_PATH">${sys:LOG_PATH:-${env:LOG_PATH:-logs}}</Property>
+        <Property name="LOG_PATTERN">
+            %d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [traceId=%X{traceId:-N/A}] %logger{36} - %msg%n
+        </Property>
+    </Properties>
+
+    <Appenders>
+        <!-- コンソール出力(journalctl / ターミナルで見る用) -->
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout pattern="${LOG_PATTERN}"/>
+        </Console>
+
+        <!-- アプリケーションログ(全レベル)。日次ローテーション + 世代管理 -->
+        <RollingFile name="ApplicationFile"
+                     fileName="${LOG_PATH}/application.log"
+                     filePattern="${LOG_PATH}/application-%d{yyyy-MM-dd}-%i.log.gz">
+            <PatternLayout pattern="${LOG_PATTERN}"/>
+            <Policies>
+                <TimeBasedTriggeringPolicy interval="1"/>
+                <SizeBasedTriggeringPolicy size="100MB"/>
+            </Policies>
+            <!-- 直近30世代分のみ保持 -->
+            <DefaultRolloverStrategy max="30"/>
+        </RollingFile>
+
+        <!-- エラーログのみを別ファイルに分離(障害調査時にERRORだけ追いたい場合用) -->
+        <RollingFile name="ErrorFile"
+                     fileName="${LOG_PATH}/error.log"
+                     filePattern="${LOG_PATH}/error-%d{yyyy-MM-dd}-%i.log.gz">
+            <PatternLayout pattern="${LOG_PATTERN}"/>
+            <Filters>
+                <ThresholdFilter level="ERROR" onMatch="ACCEPT" onMismatch="DENY"/>
+            </Filters>
+            <Policies>
+                <TimeBasedTriggeringPolicy interval="1"/>
+                <SizeBasedTriggeringPolicy size="100MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="90"/>
+        </RollingFile>
+    </Appenders>
+
+    <Loggers>
+        <Root level="INFO">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="ApplicationFile"/>
+            <AppenderRef ref="ErrorFile"/>
+        </Root>
+    </Loggers>
+
+    <!-- ローカル開発時(application-local.yml で logging.level.com.example.backend=DEBUG 等を
+         指定した場合)は、Spring Bootが自動的にこのルート設定に上書きしてくれる -->
+</Configuration>

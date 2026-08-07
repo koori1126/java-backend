@@ -2,10 +2,6 @@
 # DB接続情報(spring.datasource)はここには一切含めない。
 # 実際の接続情報は、デプロイ先のVM上に外部ファイルとして配置する
 # (config/application-prod.yml。deploy/application-prod.yml.example を参照)。
-spring:
-  jpa:
-    show-sql: false
-
 logging:
   level:
     com.example.backend: INFO

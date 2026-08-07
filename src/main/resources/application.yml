@@ -4,15 +4,6 @@ spring:
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:local}
 
-  jpa:
-    open-in-view: false
-    hibernate:
-      ddl-auto: validate   # スキーマ管理は Flyway に一任する
-    properties:
-      hibernate:
-        format_sql: true
-        dialect: org.hibernate.dialect.PostgreSQLDialect
-
   flyway:
     enabled: true
     locations: classpath:db/migration
@@ -24,8 +15,22 @@ spring:
       max-file-size: 10MB
       max-request-size: 10MB
 
+mybatis:
+  # DBのスネークケース(created_at等)とJavaのキャメルケース(createdAt等)を
+  # 自動的に対応付ける(各Mapper XMLのresultMapは明示しているため、
+  # 実質的には保険的な設定)。
+  configuration:
+    map-underscore-to-camel-case: true
+  mapper-locations: classpath:mapper/**/*.xml
+
 server:
   port: ${SERVER_PORT:8080}
+  tomcat:
+    threads:
+      # 同時に処理できるリクエスト数の上限(これを超えるとキューで待機する)。
+      # デフォルトのままでも通常は問題ないが、負荷状況に応じて調整する。
+      max: ${TOMCAT_THREADS_MAX:200}
+      min-spare: ${TOMCAT_THREADS_MIN_SPARE:10}
 
 management:
   endpoints:

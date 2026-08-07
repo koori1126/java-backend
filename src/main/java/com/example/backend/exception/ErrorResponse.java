@@ -13,8 +13,13 @@ import java.util.List;
 public class ErrorResponse {
     private LocalDateTime timestamp;
     private int status;
+    /** ErrorCode の code (例: "USR-001")。ログと突き合わせる際のキーになる */
+    private String errorCode;
     private String error;
     private String message;
     private String path;
+    /** リクエスト単位で採番されるID。ログのtraceIdと同じ値なので、
+     *  問い合わせ時にこれを教えてもらえばログを特定できる */
+    private String traceId;
     private List<String> details;
 }

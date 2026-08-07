@@ -1,11 +1,12 @@
 package com.example.backend.service.impl;
 
+import com.example.backend.exception.DuplicateEmailException;
 import com.example.backend.exception.ResourceNotFoundException;
+import com.example.backend.mapper.UserMapper;
 import com.example.backend.model.dto.CsvImportResult;
 import com.example.backend.model.dto.UserRequest;
 import com.example.backend.model.dto.UserResponse;
 import com.example.backend.model.entity.User;
-import com.example.backend.repository.UserRepository;
 import com.example.backend.service.UserService;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
@@ -27,18 +28,18 @@ import java.util.Set;
 
 /**
  * UserService の実装。
- * DBアクセスは Repository 経由でのみ行い、Controller から直接 Repository を
- * 呼び出さないことで、ビジネスロジックと入出力層を分離する。
+ * DBアクセスは UserMapper(MyBatis) 経由でのみ行い、Controller から直接
+ * Mapper を呼び出さないことで、ビジネスロジックと入出力層を分離する。
  *
  * del_flag による論理削除を採用しているため、delete() は物理削除ではなく
- * del_flag を true に更新するのみ。
+ * del_flag を true に更新するのみ(UserMapper#softDelete)。
  */
 @Service
 @RequiredArgsConstructor
 @Transactional
 public class UserServiceImpl implements UserService {
 
-    private final UserRepository userRepository;
+    private final UserMapper userMapper;
     private final Validator validator;
 
     /**
@@ -50,7 +51,7 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional(readOnly = true)
     public List<UserResponse> findAll() {
-        return userRepository.findAllActive().stream()
+        return userMapper.findAllActive().stream()
                 .map(UserResponse::from)
                 .toList();
     }
@@ -64,29 +65,46 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserResponse create(UserRequest request) {
+        // アプリ側の事前チェック(親切なエラーメッセージを早く返すための最適化)。
+        // 並列リクエストによるすり抜けの最終防衛はDB側のUNIQUE制約
+        // (users_email_unique)とGlobalExceptionHandlerでのDataIntegrityViolation
+        // Exceptionハンドリングに委ねている。
+        if (request.getEmail() != null && userMapper.existsByEmail(request.getEmail())) {
+            throw new DuplicateEmailException(request.getEmail());
+        }
+
         User user = new User();
         user.setName(request.getName());
         user.setEmail(request.getEmail());
         user.setFirstname(request.getFirstname());
         user.setFamilyname(request.getFamilyname());
-        return UserResponse.from(userRepository.save(user));
+        userMapper.insert(user);
+        // insert後、MyBatisのuseGeneratedKeysによりuser.idに採番されたIDが入っている
+        return UserResponse.from(user);
     }
 
     @Override
     public UserResponse update(Long id, UserRequest request) {
         User user = getActiveUserOrThrow(id);
+
+        boolean emailChanged = request.getEmail() != null && !request.getEmail().equals(user.getEmail());
+        if (emailChanged && userMapper.existsByEmail(request.getEmail())) {
+            throw new DuplicateEmailException(request.getEmail());
+        }
+
         user.setName(request.getName());
         user.setEmail(request.getEmail());
         user.setFirstname(request.getFirstname());
         user.setFamilyname(request.getFamilyname());
-        return UserResponse.from(userRepository.save(user));
+        userMapper.update(user);
+        return UserResponse.from(user);
     }
 
     @Override
     public void delete(Long id) {
-        User user = getActiveUserOrThrow(id);
-        user.setDelFlag(true);
-        userRepository.save(user);
+        // 存在確認(既に削除済み/存在しないIDを指定された場合は404にする)
+        getActiveUserOrThrow(id);
+        userMapper.softDelete(id);
     }
 
     /**
@@ -168,7 +186,7 @@ public class UserServiceImpl implements UserService {
     }
 
     private User getActiveUserOrThrow(Long id) {
-        return userRepository.findActiveById(id)
+        return userMapper.findActiveById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found. id=" + id));
     }
 }

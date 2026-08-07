@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.backend.mapper.UserMapper">
+
+    <!--
+      resultMapを明示することで、DBのスネークケース(created_at等)と
+      Javaのキャメルケース(createdAt等)を対応付けている。
+      (application.ymlで mybatis.configuration.map-underscore-to-camel-case: true
+       を設定していれば本来は省略できるが、可読性のため明示している)
+    -->
+    <resultMap id="userResultMap" type="com.example.backend.model.entity.User">
+        <id column="id" property="id"/>
+        <result column="name" property="name"/>
+        <result column="email" property="email"/>
+        <result column="firstname" property="firstname"/>
+        <result column="familyname" property="familyname"/>
+        <result column="del_flag" property="delFlag"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="created_by" property="createdBy"/>
+        <result column="updated_at" property="updatedAt"/>
+        <result column="updated_by" property="updatedBy"/>
+    </resultMap>
+
+    <select id="findAllActive" resultMap="userResultMap">
+        SELECT "id", "name", "email", "firstname", "familyname", "del_flag",
+               "created_at", "created_by", "updated_at", "updated_by"
+        FROM "public"."users"
+        WHERE "del_flag" IS NOT TRUE
+        ORDER BY "id"
+    </select>
+
+    <select id="findActiveById" resultMap="userResultMap">
+        SELECT "id", "name", "email", "firstname", "familyname", "del_flag",
+               "created_at", "created_by", "updated_at", "updated_by"
+        FROM "public"."users"
+        WHERE "id" = #{id}
+          AND "del_flag" IS NOT TRUE
+    </select>
+
+    <select id="findByEmail" resultMap="userResultMap">
+        SELECT "id", "name", "email", "firstname", "familyname", "del_flag",
+               "created_at", "created_by", "updated_at", "updated_by"
+        FROM "public"."users"
+        WHERE "email" = #{email}
+    </select>
+
+    <select id="existsByEmail" resultType="boolean">
+        SELECT EXISTS (
+            SELECT 1 FROM "public"."users" WHERE "email" = #{email}
+        )
+    </select>
+
+    <!--
+      created_at/updated_at はテーブル側にDEFAULT now()があるためINSERT時は
+      指定しない(DB側で自動設定させる)。del_flagも同様にDEFAULT falseを
+      設定済み(V3マイグレーション)なので明示しない。
+    -->
+    <insert id="insert" parameterType="com.example.backend.model.entity.User"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO "public"."users" ("name", "email", "firstname", "familyname")
+        VALUES (#{name}, #{email}, #{firstname}, #{familyname})
+    </insert>
+
+    <!--
+      updated_at はJavaから渡さず、SQL側で now() を使う
+      (DBのDEFAULTはINSERT時のみ適用されUPDATE時には効かないため、
+       ここで明示的に更新する)。
+    -->
+    <update id="update" parameterType="com.example.backend.model.entity.User">
+        UPDATE "public"."users"
+        SET "name" = #{name},
+            "email" = #{email},
+            "firstname" = #{firstname},
+            "familyname" = #{familyname},
+            "updated_at" = now()
+        WHERE "id" = #{id}
+    </update>
+
+    <update id="softDelete">
+        UPDATE "public"."users"
+        SET "del_flag" = true,
+            "updated_at" = now()
+        WHERE "id" = #{id}
+    </update>
+
+</mapper>

@@ -1,7 +1,7 @@
 package com.example.backend.exception;
 
-public class ResourceNotFoundException extends RuntimeException {
+public class ResourceNotFoundException extends BusinessException {
     public ResourceNotFoundException(String message) {
-        super(message);
+        super(ErrorCode.USER_NOT_FOUND, message);
     }
 }

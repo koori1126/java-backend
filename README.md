@@ -49,8 +49,8 @@ Controllerが直接Repositoryを呼び出すことはしません。
 
 EDB Postgres Advanced Server はワイヤプロトコルレベルで PostgreSQL 互換のため、
 本雛形はデフォルトで標準の **PostgreSQL JDBC ドライバ**（`org.postgresql:postgresql`、
-Maven Central から取得可能）を使用しています。Hibernateの方言も
-`PostgreSQLDialect` を使用しており、通常のCRUD用途ではこれで問題なく動作します。
+Maven Central から取得可能）を使用しています。MyBatisはSQLを直接記述するため
+JPAのような「方言(dialect)」の概念はなく、通常のCRUD用途ではこれで問題なく動作します。
 
 以下のようなEDB固有機能を使う場合は **EDB JDBC Driver**（`com.edb.Driver`、
 接続文字列 `jdbc:edb://host:5444/dbname`）への切り替えを検討してください。
@@ -82,12 +82,18 @@ Redwood（Oracle互換）モードでは、クォートしない識別子は **�
 
 `UserController` を例に、新しいリソース（例: `Product`）を追加する手順です。
 
-1. **エンティティ追加**: `model/entity/Product.java` を作成し `@Entity` を付与
-2. **マイグレーション追加**: `resources/db/migration/V2__create_products_table.sql` を作成
-   （Flywayはファイル名の連番 `V2__xxx.sql` を見てバージョン管理するため、
-   既存のマイグレーションファイルは変更せず必ず新規ファイルを追加すること）
-3. **リポジトリ追加**: `repository/ProductRepository.java`（`JpaRepository<Product, Long>` を継承。
-   `User`と同様、IDは自動インクリメント(`BIGSERIAL` + `Long`)を採用しています）
+1. **モデル追加**: `model/entity/Product.java` を作成(プレーンなPOJO)。
+   `created_at`/`created_by`/`updated_at`/`updated_by`の4カラムを持つテーブルであれば、
+   `AuditableModel`を継承するだけでこれらのフィールドが引き継がれる
+   （`public class Product extends AuditableModel { ... }`）。JPAとは異なり
+   アノテーションでのテーブル定義は不要(マッピングはMapper XML側で行う)
+2. **マイグレーション追加**: `resources/db/migration/V4__create_products_table.sql` を作成
+   （Flywayはファイル名の連番 `V{番号}__xxx.sql` を見てバージョン管理するため、
+   既存のマイグレーションファイルは変更せず必ず新規ファイルを追加すること。
+   次の番号は既存ファイルの最大値+1を確認して使う）
+3. **Mapper追加**: `mapper/ProductMapper.java`（`@Mapper`を付与したインターフェース）と、
+   `resources/mapper/ProductMapper.xml`(実際のSQL)を作成。`UserMapper`/`UserMapper.xml`を
+   コピーして名前を置き換えるのが早い
 4. **DTO追加**: `model/dto/ProductRequest.java` / `ProductResponse.java`
 5. **サービス追加**: `service/ProductService.java`（インターフェース）と
    `service/impl/ProductServiceImpl.java`（実装、`@Service` を付与）
@@ -210,7 +216,7 @@ sudo dnf install java-21-openjdk-headless
 sudo useradd --system --no-create-home backendapp
 
 # 配置先ディレクトリと、設定ファイル用ディレクトリを作成
-sudo mkdir -p /opt/backend-api/config
+sudo mkdir -p /opt/backend-api/config /opt/backend-api/logs
 sudo chown -R backendapp:backendapp /opt/backend-api
 ```
 
@@ -323,6 +329,76 @@ DB接続情報は`/opt/backend-api/config/application-prod.yml`(手順4で作成
 存在し、jar・gitリポジトリのどちらにも含まれません。接続情報を変更したい場合は、
 このファイルを直接編集して`systemctl restart backend-api`するだけで反映されます
 (jarの再ビルド・再配置は不要です)。
+
+## ログ・並行処理・エラーハンドリングについて
+
+### ファイルログ
+
+`src/main/resources/log4j2-spring.xml`(Log4j2)で以下を設定しています。
+
+- コンソール出力(従来通り。`journalctl`で確認可能)
+- `logs/application.log`: 全レベルのログ。日次 + 100MBごとにローテーション、直近30日分を保持
+- `logs/error.log`: ERRORレベルのみを抽出した別ファイル(障害調査用)
+
+出力先は環境変数`LOG_PATH`で変更可能です(未指定時はカレントディレクトリ配下の`logs/`)。
+Azure VM上ではsystemdユニットの`WorkingDirectory=/opt/backend-api`により、
+自動的に`/opt/backend-api/logs/`に出力されます。
+
+### 同時リクエストの扱い
+
+Spring Boot(組み込みTomcat)は、リクエストごとにスレッドプールから
+スレッドを割り当てて**並列に処理**します(1リクエストずつ順番に処理する
+わけではありません)。同時実行数の上限は`application.yml`の
+`server.tomcat.threads.max`(デフォルト200)で調整できます。
+
+並列処理される以上、「複数のリクエストが同じデータを同時に更新する」
+競合が起こり得ます。今回、`email`の重複についてはアプリ側のチェックに加え、
+DB側にも`UNIQUE`制約(`V2__add_users_email_unique_constraint.sql`)を追加し、
+競合時の最終的な整合性を保証しています。同様の一意性が必要な項目を
+追加する際は、アプリ側のチェックだけに頼らず、DB制約も合わせて設定してください。
+
+### エラーコード体系
+
+`exception/ErrorCode.java`にアプリ全体のエラーを一元管理しています。
+
+| コード | 内容 | HTTPステータス |
+|---|---|---|
+| `USR-001` | ユーザーが見つからない | 404 |
+| `USR-002` | メールアドレス重複 | 409 |
+| `VAL-001` | 入力値検証エラー | 400 |
+| `SYS-001` | 想定外のエラー | 500 |
+| `SYS-002` | ファイルアップロードエラー | 400 |
+
+新しいエラーの種類を追加する際は、既存のコードを変更・削除せず、
+末尾に新しい連番を追加してください(過去のログとの整合性を保つため)。
+
+### 例外処理の構成
+
+- `BusinessException`: 業務上想定される例外の基底クラス。`ErrorCode`を持つ
+- `ResourceNotFoundException` / `DuplicateEmailException`: `BusinessException`を継承した具体的な例外
+- `GlobalExceptionHandler`: 例外の種類ごとに適切なHTTPステータス・ログレベルで処理を一元化
+  - `BusinessException`: `warn`ログ(想定内のため、スタックトレースは出力しない)
+  - 想定外の`Exception`: `error`ログ(スタックトレースまで出力)
+
+### トレースID(問い合わせ対応用)
+
+`TraceIdFilter`が全リクエストに一意なID(`traceId`)を発行し、以下すべてに同じ値を載せます。
+
+- サーバーログの各行(`[traceId=xxxxx]`)
+- レスポンスヘッダー(`X-Trace-Id`)
+- エラーレスポンスのボディ(`traceId`フィールド)
+
+利用者から「このエラーが出た」と問い合わせを受けた際、レスポンスの
+`traceId`(またはヘッダー`X-Trace-Id`)を教えてもらえば、ログファイルから
+`grep`で該当のリクエストのログを特定できます。
+
+```bash
+grep "traceId=なんとか" logs/application.log
+```
+
+新しいエンティティ(`Product`等)を追加する際も、同様の考え方
+(業務エラーは`BusinessException`を継承、DB制約で最終防衛、`ErrorCode`に追記)
+を踏襲してください。
 
 ## Flywayマイグレーションについて
 
