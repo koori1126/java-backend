@@ -5,6 +5,6 @@ target/
 *.iml
 .vscode/*
 !.vscode/launch.json
-.env
-deploy/backend-api.env
+src/main/resources/application-local.yml
+config/application-prod.yml
 HELP.md

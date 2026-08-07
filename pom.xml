@@ -119,4 +119,28 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <!--
+          デプロイ用jarをビルドする時に使用するプロファイル。
+          application-local.yml(開発用DBのパスワードを含む)をjarに
+          同梱しないようにする。デプロイ時は必ずこちらを使ってビルドすること。
+
+          使い方: mvn clean package -Pexclude-local-config
+        -->
+        <profile>
+            <id>exclude-local-config</id>
+            <build>
+                <resources>
+                    <resource>
+                        <directory>src/main/resources</directory>
+                        <excludes>
+                            <exclude>application-local.yml</exclude>
+                            <exclude>application-local.yml.example</exclude>
+                        </excludes>
+                    </resource>
+                </resources>
+            </build>
+        </profile>
+    </profiles>
 </project>

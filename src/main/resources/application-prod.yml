@@ -1,15 +1,8 @@
-# 本番/検証環境用設定。値は環境変数または k8s の ConfigMap/Secret から注入する
+# 本番/検証環境用の非機密設定。
+# DB接続情報(spring.datasource)はここには一切含めない。
+# 実際の接続情報は、デプロイ先のVM上に外部ファイルとして配置する
+# (config/application-prod.yml。deploy/application-prod.yml.example を参照)。
 spring:
-  datasource:
-    url: jdbc:postgresql://${DB_HOST}:${DB_PORT:5444}/${DB_NAME}
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}
-    driver-class-name: org.postgresql.Driver
-    hikari:
-      maximum-pool-size: ${DB_POOL_MAX:10}
-      minimum-idle: ${DB_POOL_MIN:2}
-      connection-timeout: 30000
-
   jpa:
     show-sql: false
 

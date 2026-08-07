@@ -1,17 +1,10 @@
-# ローカル開発用設定。
-# 接続先はすべて環境変数で上書き可能にしてあります。
-# デフォルトは開発用に用意されている既存のPostgreSQL(192.168.20.246)を指します。
-# 実際の値は .env ファイル(git管理対象外)で管理してください。
-#
-# 【開発環境のEDB(VPN経由)等、別の接続先に切り替えたい場合】
-# コードやこのファイルは一切変更せず、環境変数(DB_HOST, DB_PORT, DB_NAME,
-# DB_USERNAME, DB_PASSWORD)を上書きするだけで接続先を切り替えられます。
-# 詳しい切り替え方法は README.md の「接続先の切り替え方法」を参照してください。
+# ローカル開発用設定(git管理対象外)。
+# 開発用に用意されている既存のPostgreSQL(192.168.20.246)に接続する設定です。
 spring:
   datasource:
-    url: jdbc:postgresql://${DB_HOST:192.168.20.246}:${DB_PORT:5432}/${DB_NAME:db01}
-    username: ${DB_USERNAME:dbadmin}
-    password: ${DB_PASSWORD}
+    url: jdbc:postgresql://192.168.20.246:5432/db01
+    username: dbadmin
+    password: UZ1Y^klXK2N8
     driver-class-name: org.postgresql.Driver
 
   jpa:

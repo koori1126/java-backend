@@ -8,10 +8,10 @@ Oracle互換モード（Redwoodモード）を想定しています。
 ```
 backend-api/
 ├── pom.xml
-├── .env.example                        # ローカル接続情報の雛形(コピーして.envとして使う)
+├── src/main/resources/application-local.yml.example  # ローカル接続情報の雛形
 ├── deploy/                            # Azure VMへのデプロイ関連ファイル
 │   ├── backend-api.service            # systemdユニットファイル
-│   └── backend-api.env.example        # 環境変数ファイルの雛形
+│   └── application-prod.yml.example   # VM配置用の設定ファイルの雛形
 └── src/
     ├── main/
     │   ├── java/com/example/backend/
@@ -147,35 +147,38 @@ name,email,firstname,familyname
 
 ## 接続先の切り替え方法(開発用PostgreSQL ⇔ 開発環境のEDB等)
 
-コードや`application-local.yml`を書き換える必要はありません。接続情報はすべて
-環境変数(`DB_HOST` / `DB_PORT` / `DB_NAME` / `DB_USERNAME` / `DB_PASSWORD`)で
-上書きできるようになっており、デフォルトでは開発用に用意されている既存の
-PostgreSQL(`192.168.20.246:5432` / db名: `db01`)に接続します。
+`application-local.yml`はgit管理対象外です。接続先を切り替えたい場合は、
+このファイルの`spring.datasource`配下を直接書き換えてください
+(コードの変更は不要です)。
 
-**手順**
+**初回セットアップ**
 
-1. `.env.example` をコピーして `.env` を作成する(`.env`はgit管理対象外)
-2. デフォルトの開発用PostgreSQLに繋ぐだけなら、パスワードだけ記入すればOK
-3. 別の接続先(開発環境のEDB等)に切り替えたい時は、`.env`内の値を書き換える
-4. VSCodeで `BackendApplication.java` を開き、実行/デバッグ時に
-   `.vscode/launch.json` の構成(`.env`を自動で読み込む設定済み)を選んで起動する
+1. `src/main/resources/application-local.yml.example` をコピーして、
+   同じフォルダに `application-local.yml` という名前で保存する
+2. 接続先(`url`/`username`/`password`)を実際の値に書き換える
 
-ターミナルから起動する場合は、環境変数を直接指定します(PowerShellの例)。
+**別の接続先(開発環境のEDB等)に切り替えたい時**
 
-```powershell
-$env:DB_HOST="dev-edb.example.internal"
-$env:DB_PORT="5444"
-$env:DB_NAME="vppsys_dev"
-$env:DB_USERNAME="your_username"
-$env:DB_PASSWORD="your_password"
-mvn spring-boot:run "-Dspring-boot.run.profiles=local"
+`application-local.yml`内の`url`/`username`/`password`を書き換えるだけです。
+
+```yaml
+spring:
+  datasource:
+    url: jdbc:postgresql://dev-edb.example.internal:5444/vppsys_dev
+    username: your_username
+    password: your_password
 ```
 
-`.env`を既存PostgreSQL用の値に戻せば、次回起動時はそちらに戻ります。
-接続先を切り替えるたびにYAMLやコードを触る必要はありません。
+普段の開発用PostgreSQLに戻す時は、また元の値に書き換えてください。
 
 VPN経由でないと繋がらない接続先(開発環境のEDB等)を使う場合は、
-事前にVPN接続を済ませてから上記の環境変数を設定してください。
+事前にVPN接続を済ませてから起動してください。
+
+**取り扱いに関する注意**
+
+`application-local.yml`には実際のパスワードが平文で書かれます。このファイル自体は
+`.gitignore`で除外済みなので誤ってコミットされる心配はありませんが、他の人に共有する
+(チャットに貼る、他のPCにコピーする等)際はパスワードが含まれている点に注意してください。
 
 ## ローカルでの動作確認
 
@@ -183,8 +186,7 @@ VPN経由でないと繋がらない接続先(開発環境のEDB等)を使う場
 # 1. ビルド
 mvn clean package
 
-# 2. 起動（application-local.yml が使われる。.envの値を読み込むにはVSCodeのlaunch.jsonか、
-#    direnv等で環境変数を読み込んだ状態のターミナルから実行してください）
+# 2. 起動(application-local.yml が使われる)
 java -jar target/backend-api-0.0.1-SNAPSHOT.jar --spring.profiles.active=local
 ```
 
@@ -207,17 +209,22 @@ sudo dnf install java-21-openjdk-headless
 # アプリ専用ユーザーを作成(root運用を避ける)
 sudo useradd --system --no-create-home backendapp
 
-# 配置先ディレクトリを作成
-sudo mkdir -p /opt/backend-api
-sudo chown backendapp:backendapp /opt/backend-api
+# 配置先ディレクトリと、設定ファイル用ディレクトリを作成
+sudo mkdir -p /opt/backend-api/config
+sudo chown -R backendapp:backendapp /opt/backend-api
 ```
 
 ### 2. jarファイルのビルド
 
 開発機(または社内のビルドサーバー)で以下を実行し、jarファイルを作成します。
 
+**重要:** 必ず`-Pexclude-local-config`を付けてビルドしてください。これを付けないと、
+開発用DBのパスワードが書かれた`application-local.yml`がjarの中にそのまま
+同梱されてしまいます(設定として使われることはありませんが、jarを展開すれば
+中身が見えてしまうため、本番配布用のjarには含めるべきではありません)。
+
 ```bash
-mvn clean package
+mvn clean package -Pexclude-local-config
 # target/backend-api-0.0.1-SNAPSHOT.jar が生成される
 ```
 
@@ -233,16 +240,40 @@ sudo mv /tmp/backend-api-0.0.1-SNAPSHOT.jar /opt/backend-api/backend-api.jar
 sudo chown backendapp:backendapp /opt/backend-api/backend-api.jar
 ```
 
-### 4. 環境変数ファイルの配置
+### 4. DB接続情報を含む設定ファイルの配置
 
-`deploy/backend-api.env.example` を参考に、実際の接続情報を記入したファイルを
-`/opt/backend-api/backend-api.env` として配置します(このファイルはgit管理対象外)。
+**この手順は初回のみ、かつVM上でのみ行います。**この設定ファイルはjarにもgit
+リポジトリにも含まれません。DB接続情報を含む機密ファイルなので、VM上に直接作成し、
+それ以降のデプロイ(jarの更新)ではこのファイルには触れません。
+
+Spring Bootは起動時、jarと同じ階層の`config/`フォルダを自動的に読みに行くため、
+`/opt/backend-api/config/application-prod.yml`を配置しておくだけで、
+コードやjarを一切変更せずにDB接続情報を注入できます。
 
 ```bash
-sudo cp deploy/backend-api.env.example /opt/backend-api/backend-api.env
-sudo vi /opt/backend-api/backend-api.env   # 実際の値に書き換える
-sudo chown backendapp:backendapp /opt/backend-api/backend-api.env
-sudo chmod 600 /opt/backend-api/backend-api.env
+sudo vi /opt/backend-api/config/application-prod.yml
+```
+
+内容は`deploy/application-prod.yml.example`を参考に、実際の値を記入してください。
+
+```yaml
+spring:
+  datasource:
+    url: jdbc:postgresql://<EDBのホスト名>:<ポート>/<DB名>
+    username: <ユーザー名>
+    password: <パスワード>
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 30000
+```
+
+権限を絞っておきます。
+
+```bash
+sudo chown backendapp:backendapp /opt/backend-api/config/application-prod.yml
+sudo chmod 600 /opt/backend-api/config/application-prod.yml
 ```
 
 ### 5. systemdサービスとして登録・起動
@@ -283,18 +314,15 @@ CI/CDパイプライン(社内のツールに合わせて)に置き換えて自�
 - VMの再起動時も自動的にアプリが立ち上がるよう、`systemctl enable`をしておくこと
   (上記手順に含まれています)
 
-### 8. 環境変数(本番/検証環境)
+### 8. 設定ファイル(`config/application-prod.yml`)について
 
-`application-prod.yml` は以下の環境変数を参照します。`backend-api.env` に記入してください。
+`SPRING_PROFILES_ACTIVE=prod`はsystemdユニット内に直接設定済みです(機密情報では
+ないため、ユニットファイル自体にコード管理されています)。
 
-| 変数名 | 内容 |
-|---|---|
-| `DB_HOST` | EDBのホスト名 |
-| `DB_PORT` | 通常 5444 |
-| `DB_NAME` | データベース名 |
-| `DB_USERNAME` | 接続ユーザー |
-| `DB_PASSWORD` | 接続パスワード |
-| `SPRING_PROFILES_ACTIVE` | `prod` を指定 |
+DB接続情報は`/opt/backend-api/config/application-prod.yml`(手順4で作成)にのみ
+存在し、jar・gitリポジトリのどちらにも含まれません。接続情報を変更したい場合は、
+このファイルを直接編集して`systemctl restart backend-api`するだけで反映されます
+(jarの再ビルド・再配置は不要です)。
 
 ## Flywayマイグレーションについて
 
