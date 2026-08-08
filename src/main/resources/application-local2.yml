@@ -1,0 +1,19 @@
+# ローカル開発用設定(git管理対象外)。
+# 開発用に用意されている既存のPostgreSQL(192.168.20.246)に接続する設定です。
+spring:
+  datasource:
+    url: jdbc:postgresql://192.168.1.240:5432/data01
+    username: dbadmin
+    password: dbadmin
+    driver-class-name: org.postgresql.Driver
+
+logging:
+  level:
+    com.example.backend: DEBUG
+    # MyBatisが発行するSQLをログに出す(Mapperインターフェースのパッケージを指定)
+    com.example.backend.mapper: DEBUG
+
+app:
+  cors:
+    # フロントエンド(Next.js開発サーバー)からのアクセスを許可
+    allowed-origins: http://localhost:3000
