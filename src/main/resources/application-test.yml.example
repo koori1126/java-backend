@@ -1,0 +1,13 @@
+# このファイルをコピーして "application-test.yml" という名前で使ってください
+# (application-test.ymlはgit管理対象外)。
+#
+# 自動テスト(*MapperTest)専用の接続先。開発用DB(192.168.20.246等)とは
+# 完全に別の、ローカルPC上にインストールしたPostgreSQLを指すこと。
+# テストの実行によってデータが書き込まれる/削除されるため、
+# 実データが入っている環境には絶対に向けないこと。
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/tesla_test
+    username: postgres
+    password: <ローカルPostgreSQLのパスワード>
+    driver-class-name: org.postgresql.Driver

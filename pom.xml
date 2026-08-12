@@ -148,6 +148,22 @@
                     </excludes>
                 </configuration>
             </plugin>
+            <plugin>
+                <!--
+                  デフォルトの `mvn test` では、実DBへの接続が必要なテスト
+                  (*MapperTest。命名規則で判定)を除外する。
+                  DB未接続でも常に安全に実行できる単体テスト(Service/Controller)
+                  だけを毎回のビルドで走らせるため。
+                  Mapperテストを含めて実行したい場合は integration-test プロファイルを使う。
+                -->
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <excludes>
+                        <exclude>**/*MapperTest.java</exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 
@@ -171,6 +187,30 @@
                         </excludes>
                     </resource>
                 </resources>
+            </build>
+        </profile>
+
+        <!--
+          実DB接続が必要なMapperテストも含めて実行するプロファイル。
+          事前にapplication-local.ymlの接続先(開発用DB)に到達できる状態
+          (VPN接続等)にしておくこと。
+
+          使い方: mvn test -Pintegration-test
+        -->
+        <profile>
+            <id>integration-test</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <excludes>
+                                <exclude>none</exclude>
+                            </excludes>
+                        </configuration>
+                    </plugin>
+                </plugins>
             </build>
         </profile>
     </profiles>
