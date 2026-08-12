@@ -144,11 +144,41 @@ name,email,firstname,familyname
 }
 ```
 
-`lineNumber`はCSVファイル上の行番号（ヘッダー行を1行目として数える）です。
+`lineNumber`はCSVファイル上の行番号(ヘッダー行を1行目として数える)です。
 
 **新しいCSV列を追加したくなったら**
 
-`UserServiceImpl`内の`CSV_HEADERS`配列と、CSV読み込み処理(`importFromCsv`メソッド)を、
+`UserServiceImpl`内の`CSV_IMPORT_HEADERS`配列と、CSV読み込み処理(`importFromCsv`メソッド)を、
+対象のフィールドに合わせて修正してください。
+
+## CSVによるユーザー一覧の出力(エクスポート)
+
+`GET /api/v1/users/export` にアクセスすると、現在登録されているユーザー
+(論理削除済みを除く)をCSVファイルとしてダウンロードできます。
+
+**出力される列**
+
+```csv
+id,name,email,firstname,familyname,created_at,created_by,updated_at,updated_by
+```
+
+取り込み用(`import`)の4列より多く、システム管理列(`id`/`created_at`等)も
+含めた全項目を出力します(参照・バックアップ用途を想定)。このファイルを
+そのまま`import`に使う場合は、`name`/`email`/`firstname`/`familyname`の
+4列だけを抜き出して使ってください。
+
+**ブラウザ/Postmanでの取得方法**
+
+- ブラウザで直接 `http://localhost:8080/api/v1/users/export` を開くとダウンロードされます
+- Postmanの場合: Method `GET`、URLは同上。レスポンスの「Save Response」→
+  「Save to a file」でファイルとして保存できます
+
+文字コードはUTF-8(BOM付き)で出力しているため、Excelでそのまま開いても
+日本語が文字化けしません。
+
+**出力する列を変更したくなったら**
+
+`UserServiceImpl`内の`CSV_EXPORT_HEADERS`配列と、`exportToCsv`メソッドを、
 対象のフィールドに合わせて修正してください。
 
 ## 接続先の切り替え方法(開発用PostgreSQL ⇔ 開発環境のEDB等)

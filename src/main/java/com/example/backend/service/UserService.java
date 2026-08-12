@@ -6,6 +6,7 @@ import com.example.backend.model.dto.UserResponse;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.io.Writer;
 import java.util.List;
 
 /**
@@ -29,4 +30,9 @@ public interface UserService {
      * 1行ごとに検証し、エラーがあった行はスキップして処理を続行する。
      */
     CsvImportResult importFromCsv(MultipartFile file) throws IOException;
+
+    /**
+     * 現在登録されているユーザー(論理削除済みを除く)をCSV形式で出力する。
+     */
+    void exportToCsv(Writer writer) throws IOException;
 }

@@ -13,6 +13,7 @@ import jakarta.validation.Validator;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVPrinter;
 import org.apache.commons.csv.CSVRecord;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +22,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
@@ -43,10 +45,20 @@ public class UserServiceImpl implements UserService {
     private final Validator validator;
 
     /**
-     * CSVのヘッダー行に期待する列名。
+     * CSVのヘッダー行に期待する列名(取り込み用)。
      * 列の順序ではなく列名でマッピングするため、順不同でも動作する。
      */
-    private static final String[] CSV_HEADERS = {"name", "email", "firstname", "familyname"};
+    private static final String[] CSV_IMPORT_HEADERS = {"name", "email", "firstname", "familyname"};
+
+    /**
+     * CSV出力時の列(取り出し用)。取り込み用より多く、システム管理列も含めて
+     * 全項目を出力する(参照・バックアップ用途を想定。再取り込み目的なら
+     * name/email/firstname/familynameの4列だけを抜き出して使うこと)。
+     */
+    private static final String[] CSV_EXPORT_HEADERS = {
+            "id", "name", "email", "firstname", "familyname",
+            "created_at", "created_by", "updated_at", "updated_by"
+    };
 
     @Override
     @Transactional(readOnly = true)
@@ -124,7 +136,7 @@ public class UserServiceImpl implements UserService {
         int totalCount = 0;
 
         CSVFormat format = CSVFormat.DEFAULT.builder()
-                .setHeader(CSV_HEADERS)
+                .setHeader(CSV_IMPORT_HEADERS)
                 .setSkipHeaderRecord(true)
                 .setTrim(true)
                 .setIgnoreHeaderCase(true)
@@ -175,6 +187,34 @@ public class UserServiceImpl implements UserService {
                 .failureCount(errors.size())
                 .errors(errors)
                 .build();
+    }
+
+    /**
+     * 現在登録されているユーザー(論理削除済みを除く)をCSV形式で出力する。
+     * 呼び出し側(Controller)がHTTPレスポンスのWriterをそのまま渡す想定。
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public void exportToCsv(Writer writer) throws IOException {
+        CSVFormat format = CSVFormat.DEFAULT.builder()
+                .setHeader(CSV_EXPORT_HEADERS)
+                .build();
+
+        try (CSVPrinter printer = new CSVPrinter(writer, format)) {
+            for (User user : userMapper.findAllActive()) {
+                printer.printRecord(
+                        user.getId(),
+                        user.getName(),
+                        user.getEmail(),
+                        user.getFirstname(),
+                        user.getFamilyname(),
+                        user.getCreatedAt(),
+                        user.getCreatedBy(),
+                        user.getUpdatedAt(),
+                        user.getUpdatedBy()
+                );
+            }
+        }
     }
 
     private String getOrNull(CSVRecord record, String column) {

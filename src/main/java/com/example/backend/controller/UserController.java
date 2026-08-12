@@ -6,6 +6,7 @@ import com.example.backend.model.dto.UserResponse;
 import com.example.backend.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -16,6 +17,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.net.URI;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 
@@ -87,5 +90,22 @@ public class UserController {
         }
         CsvImportResult result = userService.importFromCsv(file);
         return ResponseEntity.ok(result);
+    }
+
+    /**
+     * 現在登録されているユーザー(論理削除済みを除く)をCSVファイルとして出力する。
+     * Excelでそのまま開いても文字化けしないよう、UTF-8のBOM付きで出力する。
+     */
+    @GetMapping("/export")
+    @Operation(summary = "ユーザー一覧のCSV出力")
+    public void exportUsers(HttpServletResponse response) throws IOException {
+        String filename = "users_" + LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE) + ".csv";
+
+        response.setContentType("text/csv; charset=UTF-8");
+        response.setHeader("Content-Disposition", "attachment; filename=\"" + filename + "\"");
+
+        // ExcelでUTF-8のCSVを開いた際の文字化けを防ぐため、BOMを先頭に付与する
+        response.getWriter().write('\uFEFF');
+        userService.exportToCsv(response.getWriter());
     }
 }

@@ -14,7 +14,7 @@
 
     <Properties>
         <!-- ログ出力先ディレクトリ。環境変数 LOG_PATH で上書き可能(未指定時は ./logs) -->
-        <Property name="LOG_PATH">${sys:LOG_PATH:-${env:LOG_PATH:-logs}}</Property>
+        <Property name="APP_LOG_PATH">${sys:LOG_PATH:-${env:LOG_PATH:-logs}}</Property>
         <Property name="LOG_PATTERN">
             %d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [traceId=%X{traceId:-N/A}] %logger{36} - %msg%n
         </Property>
@@ -28,8 +28,8 @@
 
         <!-- アプリケーションログ(全レベル)。日次ローテーション + 世代管理 -->
         <RollingFile name="ApplicationFile"
-                     fileName="${LOG_PATH}/application.log"
-                     filePattern="${LOG_PATH}/application-%d{yyyy-MM-dd}-%i.log.gz">
+                     fileName="${APP_LOG_PATH}/application.log"
+                     filePattern="${APP_LOG_PATH}/application-%d{yyyy-MM-dd}-%i.log.gz">
             <PatternLayout pattern="${LOG_PATTERN}"/>
             <Policies>
                 <TimeBasedTriggeringPolicy interval="1"/>
@@ -41,8 +41,8 @@
 
         <!-- エラーログのみを別ファイルに分離(障害調査時にERRORだけ追いたい場合用) -->
         <RollingFile name="ErrorFile"
-                     fileName="${LOG_PATH}/error.log"
-                     filePattern="${LOG_PATH}/error-%d{yyyy-MM-dd}-%i.log.gz">
+                     fileName="${APP_LOG_PATH}/error.log"
+                     filePattern="${APP_LOG_PATH}/error-%d{yyyy-MM-dd}-%i.log.gz">
             <PatternLayout pattern="${LOG_PATTERN}"/>
             <Filters>
                 <ThresholdFilter level="ERROR" onMatch="ACCEPT" onMismatch="DENY"/>

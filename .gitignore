@@ -5,6 +5,7 @@ target/
 *.iml
 .vscode/*
 !.vscode/launch.json
-src/main/resources/application-local.yml
+src/main/resources/application-local*.yml
+!src/main/resources/application-local.yml.example
 config/application-prod.yml
 HELP.md
