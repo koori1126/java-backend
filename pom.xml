@@ -164,6 +164,63 @@
                     </excludes>
                 </configuration>
             </plugin>
+
+            <!--
+              フォーマッター(Spotless + google-java-format)。
+              使い方:
+                mvn spotless:check  … フォーマット崩れを検出するだけ(自動修正しない)
+                mvn spotless:apply  … 自動整形する
+              `mvn verify` (テスト・パッケージングの後段)で自動的にチェックされる
+              ため、フォーマットが崩れていると `mvn verify` は失敗する。
+              (`mvn test` / `mvn package` 単体では実行されない)
+            -->
+            <plugin>
+                <groupId>com.diffplug.spotless</groupId>
+                <artifactId>spotless-maven-plugin</artifactId>
+                <version>2.43.0</version>
+                <configuration>
+                    <java>
+                        <includes>
+                            <include>src/main/java/**/*.java</include>
+                            <include>src/test/java/**/*.java</include>
+                        </includes>
+                        <googleJavaFormat>
+                            <version>1.22.0</version>
+                            <style>GOOGLE</style>
+                        </googleJavaFormat>
+                        <removeUnusedImports/>
+                        <importOrder/>
+                    </java>
+                </configuration>
+                <executions>
+                    <execution>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!--
+              静的解析(SpotBugs)。
+              使い方:
+                mvn spotbugs:check    … 検出のみ(違反があればビルド失敗)
+                mvn spotbugs:gui      … GUIで結果を確認(ローカルで実行した場合)
+              ビルドの通常ライフサイクルには組み込んでいない(検出内容の精査が
+              必要なため、まずは手動実行で運用する想定)。CI等に組み込む場合は
+              <executions>を追加してライフサイクルにバインドすること。
+            -->
+            <plugin>
+                <groupId>com.github.spotbugs</groupId>
+                <artifactId>spotbugs-maven-plugin</artifactId>
+                <version>4.8.6.6</version>
+                <configuration>
+                    <effort>Max</effort>
+                    <threshold>Medium</threshold>
+                    <excludeFilterFile>spotbugs-exclude.xml</excludeFilterFile>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 

@@ -89,7 +89,7 @@ DBが無い環境でも、単体テストだけは常に安全に実行できる
 1. ローカルPCにPostgreSQL(バージョンは本番のEDBに合わせて16系を推奨)をインストールする
 2. テスト専用のDBを作成する(**開発用の共有DBとは完全に別にすること**。テストの実行でデータが書き込まれる/削除されるため)
    ```sql
-   CREATE DATABASE tesla_test;
+   CREATE DATABASE plex_test;
    ```
 3. `src/main/resources/application-test.yml.example` をコピーして、同じフォルダに
    `application-test.yml` として保存し、接続情報(パスワード等)を記入する
@@ -123,3 +123,55 @@ mvn test -Pintegration-test
 **将来CI(GitHub Actions等)を導入する場合**
 
 CI環境にも同様に「テスト実行中だけPostgreSQLを起動する」設定(GitHub Actionsの`services`機能等)を追加すれば、今回の「ローカルのPostgreSQLに接続する」という前提を変えずにそのままCIでも実行できます。
+
+## 静的解析・フォーマッターについて
+
+### フォーマッター(Spotless + google-java-format)
+
+コードのフォーマット(インデント・改行位置等)を自動的に統一する仕組みです。
+
+```bash
+mvn spotless:check   # フォーマット崩れを検出するだけ(自動修正しない)
+mvn spotless:apply   # 自動整形する
+```
+
+**`mvn verify`を実行すると、自動的に`spotless:check`が実行されます**(`verify`フェーズに
+バインド済み)。フォーマットが崩れていると`mvn verify`は失敗するので、事前に
+`mvn spotless:apply`で整形しておいてください。`mvn test`/`mvn package`単体では
+実行されないため、日常の開発では気にする必要はありません。
+
+**初回導入時の注意**
+
+このプロジェクトに初めてSpotlessを導入した際、既存のソースコードが
+google-java-formatのルールに完全準拠していない可能性があります。導入後は
+一度`mvn spotless:apply`を実行し、既存コード全体を整形してからコミットしてください。
+
+### 静的解析(SpotBugs)
+
+コード中のバグパターン(nullチェック漏れ、リソースの未解放等)を検出する
+静的解析ツールです。
+
+```bash
+mvn spotbugs:check
+```
+
+**現時点では、通常のビルド(`mvn test`/`mvn package`/`mvn verify`)には
+組み込んでいません。** 導入直後は誤検知(false positive)や、修正の判断に
+時間がかかる警告が多く出ることが多いため、まずは手動実行で内容を確認し、
+必要な箇所は`spotbugs-exclude.xml`に除外設定を追加していく運用を想定しています。
+チームで運用が安定してきたら、`pom.xml`のSpotBugsプラグインに`<executions>`を
+追加し、`mvn verify`等のライフサイクルに組み込むことを検討してください。
+
+**誤検知の除外方法**
+
+`spotbugs-exclude.xml`に、除外したい警告のパターンを追加します。
+
+```xml
+<Match>
+    <Class name="com.example.backend.service.impl.UserServiceImpl"/>
+    <Bug pattern="EI_EXPOSE_REP"/>
+</Match>
+```
+
+「本当に問題ない」と判断したものだけを追加してください。むやみに警告を
+握り潰す使い方は避けること。

@@ -21,7 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  *   PostgreSQLに接続する。開発用の共有DB(192.168.20.246等)には接続しない
  *   (他の開発者や実データに影響を与えないようにするため)
  * - 事前に application-test.yml.example を参考に application-test.yml を
- *   作成し、テスト専用のDB(例: tesla_test)を指しておくこと
+ *   作成し、テスト専用のDB(例: plex_test)を指しておくこと
  *
  * 【@Transactionalによる後始末】
  * このクラスにつけた@Transactionalにより、各テストメソッドの終了時に

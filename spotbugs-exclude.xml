@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SpotBugsの誤検知(false positive)を抑制するための除外設定。
+  実際に検出された警告を確認した上で、「これは問題ない」と判断したものだけを
+  ここに追加すること。無条件に警告を握り潰す目的で使わないよう注意。
+
+  記述例:
+  <Match>
+      <Class name="com.example.backend.service.impl.UserServiceImpl"/>
+      <Bug pattern="EI_EXPOSE_REP"/>
+  </Match>
+-->
+<FindBugsFilter>
+</FindBugsFilter>

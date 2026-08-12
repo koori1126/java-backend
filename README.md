@@ -10,6 +10,7 @@ Oracle互換モード（Redwoodモード）を想定しています。
 - **Log4j2**(ロギング。Logbackではない)
 - **PostgreSQL JDBC ドライバ**(本番はEDB Postgres Advanced Server。ワイヤプロトコル互換のため標準ドライバで接続)
 - **Flyway**(DBマイグレーション)
+- **Spotless(google-java-format)** / **SpotBugs**(フォーマッター・静的解析。詳細はdocs/setup.md)
 - デプロイ先: Azure VM(Docker/Kubernetesは使用せず、JREを直接インストールしてsystemdで運用)
 
 ## ドキュメント
