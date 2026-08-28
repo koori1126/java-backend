@@ -10,7 +10,8 @@ Oracle互換モード（Redwoodモード）を想定しています。
 - **Log4j2**(ロギング。Logbackではない)
 - **PostgreSQL JDBC ドライバ**(本番はEDB Postgres Advanced Server。ワイヤプロトコル互換のため標準ドライバで接続)
 - **Flyway**(DBマイグレーション)
-- **Spotless(google-java-format)** / **SpotBugs**(フォーマッター・静的解析。詳細はdocs/setup.md)
+- **Spotless(google-java-format)** / **SpotBugs** / **Checkstyle**(フォーマッター・静的解析。詳細はdocs/setup.md)
+- **Spring Security(OAuth2 Client)**: Okta(OIDC)によるログイン認証。BFF不採用、セッションCookie方式(詳細はdocs/features/auth.md)
 - デプロイ先: Azure VM(Docker/Kubernetesは使用せず、JREを直接インストールしてsystemdで運用)
 
 ## ドキュメント
@@ -23,6 +24,7 @@ Oracle互換モード（Redwoodモード）を想定しています。
 | [docs/architecture.md](./docs/architecture.md) | 設計思想(ディレクトリ構成、DBドライバ選定理由、Oracle互換モードの注意、ログ/並行処理/エラーハンドリングの設計、Flywayについて) |
 | [docs/deployment.md](./docs/deployment.md) | Azure VMへのデプロイ手順 |
 | [docs/features/user.md](./docs/features/user.md) | Userリソースの機能詳細(エンドポイント追加方法、CSV入出力)。新しいリソースを追加する際のコピー元 |
+| [docs/features/auth.md](./docs/features/auth.md) | Okta(OIDC)によるログイン認証の設定・実装内容 |
 
 ## クイックスタート
 

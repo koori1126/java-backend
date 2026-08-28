@@ -62,6 +62,16 @@
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
 
+        <!--
+          OIDC認証(Okta)。Spring SecurityがOAuth2クライアントとして動作し、
+          セッションベースの認証を行う(BFF不採用、フロントエンドはトークンに
+          一切触れない構成。詳細は docs/features/auth.md を参照)。
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-oauth2-client</artifactId>
+        </dependency>
+
         <!-- Actuator (ヘルスチェック / メトリクス) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -219,6 +229,41 @@
                     <effort>Max</effort>
                     <threshold>Medium</threshold>
                     <excludeFilterFile>spotbugs-exclude.xml</excludeFilterFile>
+                </configuration>
+            </plugin>
+
+            <!--
+              静的解析(Checkstyle)。コーディング規約(命名規則、Javadoc、
+              import順序等)への準拠を検証する。SpotBugsが「バグの可能性」を
+              検出するのに対し、Checkstyleは「規約・スタイル」を検証する
+              ものであり、役割が異なる(両方使うのはこの観点で妥当)。
+
+              使い方:
+                mvn checkstyle:check   … 検出のみ(違反があればビルド失敗)
+                mvn checkstyle:checkstyle … HTMLレポートを生成(target/site/checkstyle.html)
+
+              ベースは google_checks.xml(Checkstyle同梱の標準ルール)を採用。
+              クライアント標準の規約がある場合は、専用のXMLファイルを用意して
+              <configLocation>で差し替えること。
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-checkstyle-plugin</artifactId>
+                <version>3.6.0</version>
+                <dependencies>
+                    <dependency>
+                        <groupId>com.puppycrawl.tools</groupId>
+                        <artifactId>checkstyle</artifactId>
+                        <version>10.20.2</version>
+                    </dependency>
+                </dependencies>
+                <configuration>
+                    <configLocation>google_checks.xml</configLocation>
+                    <suppressionsLocation>checkstyle-suppressions.xml</suppressionsLocation>
+                    <consoleOutput>true</consoleOutput>
+                    <failOnViolation>true</failOnViolation>
+                    <violationSeverity>warning</violationSeverity>
+                    <includeTestSourceDirectory>true</includeTestSourceDirectory>
                 </configuration>
             </plugin>
         </plugins>

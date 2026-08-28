@@ -15,6 +15,12 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
  * ローカル開発時は application-local.yml で
  *   app.cors.allowed-origins: http://localhost:5173
  * のように、フロントの開発サーバーのオリジンを指定すること。
+ *
+ * 【allowCredentials(true)について】
+ * セッションCookieによる認証(Okta連携)を別オリジンから行うため、
+ * Cookieの送受信を許可する設定が必要。これを有効にする場合、
+ * allowedOriginsに"*"(全許可)は指定できない制約があるため注意
+ * (今回は元々オリジンを列挙する方式なので問題ない)。
  */
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
@@ -31,6 +37,7 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addMapping("/api/**")
                 .allowedOrigins(origins)
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-                .allowedHeaders("*");
+                .allowedHeaders("*")
+                .allowCredentials(true);
     }
 }

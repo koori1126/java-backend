@@ -11,3 +11,19 @@ spring:
     username: postgres
     password: <ローカルPostgreSQLのパスワード>
     driver-class-name: org.postgresql.Driver
+
+  security:
+    oauth2:
+      client:
+        # Mapperの統合テストは実際にOktaへログインするわけではないが、
+        # SecurityConfigがOAuth2の設定Beanを必要とするため、
+        # (ダミーでよいので)値を入れておかないとSpringのコンテキスト起動に失敗する。
+        # application-local.ymlと同じ値をそのまま使って問題ない。
+        registration:
+          okta:
+            client-id: <Client IDを入力(local用と同じ値でよい)>
+            client-secret: <Client Secretを入力(local用と同じ値でよい)>
+            scope: openid, profile, email
+        provider:
+          okta:
+            issuer-uri: https://<あなたのOktaドメイン>/oauth2/default

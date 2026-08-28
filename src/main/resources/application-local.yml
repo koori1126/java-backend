@@ -7,6 +7,21 @@ spring:
     password: UZ1Y^klXK2N8
     driver-class-name: org.postgresql.Driver
 
+  security:
+    oauth2:
+      client:
+        registration:
+          okta:
+            # Okta管理画面のアプリ「General」タブに表示される値
+            client-id: <Client IDを入力>
+            client-secret: <Client Secretを入力>
+            scope: openid, profile, email
+        provider:
+          okta:
+            # Okta管理画面の Security > API > Authorization Servers > default
+            # の「Issuer URI」
+            issuer-uri: https://trial-1274356.okta.com/oauth2/default
+
 logging:
   level:
     com.example.backend: DEBUG
@@ -17,3 +32,6 @@ app:
   cors:
     # フロントエンド(Next.js開発サーバー)からのアクセスを許可
     allowed-origins: http://localhost:3000
+  # ログアウト後にブラウザを戻す先(Oktaの「Sign-out redirect URIs」に
+  # 登録したものと完全に一致させること)
+  post-logout-redirect-uri: http://localhost:3000/

@@ -6,6 +6,7 @@ import com.example.backend.service.UserService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.http.MediaType;
@@ -21,8 +22,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Controller層の単体テストのサンプル。
  * Service はモック化し、リクエスト/レスポンスのマッピングのみを検証する。
+ *
+ * このテストの目的はSecurity(認証)ではなくController層のマッピング確認のため、
+ * @AutoConfigureMockMvc(addFilters = false) でSpring Securityのフィルタを
+ * 無効化している(Okta連携導入により、素の状態だと全リクエストが認証必須になり
+ * このテストが意図せず失敗するため)。認証自体の検証は別途行うこと。
  */
 @WebMvcTest(UserController.class)
+@AutoConfigureMockMvc(addFilters = false)
 class UserControllerTest {
 
     @Autowired

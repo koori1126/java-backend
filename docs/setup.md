@@ -175,3 +175,31 @@ mvn spotbugs:check
 
 「本当に問題ない」と判断したものだけを追加してください。むやみに警告を
 握り潰す使い方は避けること。
+
+### 静的解析(Checkstyle)
+
+コーディング規約(命名規則、Javadocの書き方、import順序等)への準拠を
+検証するツールです。SpotBugsが「バグの可能性」を検出するのに対し、
+Checkstyleは「規約・スタイル」を検証するものであり、役割が異なります。
+
+```bash
+mvn checkstyle:check       # 検出のみ(違反があればビルド失敗)
+mvn checkstyle:checkstyle  # HTMLレポートを生成(target/site/checkstyle.html)
+```
+
+ベースのルールセットは、Checkstyle同梱の`google_checks.xml`(Googleの
+標準規約)を採用しています。クライアント標準の規約がある場合は、専用の
+XMLファイルを用意し、`pom.xml`のCheckstyleプラグイン設定内
+`<configLocation>`をそちらに差し替えてください。
+
+**現時点では通常のビルドには組み込んでいません**(SpotBugsと同様の理由)。
+チームでの運用が固まった段階で、`<executions>`を追加して`mvn verify`等の
+ライフサイクルに組み込むことを検討してください。
+
+**誤検知・対応不要な警告の除外方法**
+
+`checkstyle-suppressions.xml`に、除外したいチェック・ファイルを追加します。
+
+```xml
+<suppress checks="JavadocMethod" files="UserController\.java"/>
+```
