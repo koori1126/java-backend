@@ -5,7 +5,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.oauth2.client.oidc.web.logout.OidcClientInitiatedLogoutSuccessHandler;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.web.SecurityFilterChain;
@@ -20,12 +19,16 @@ import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
  * 管理する方式(詳細は docs/features/auth.md を参照)。フロントエンドの
  * JavaScriptは、Oktaのトークンに一切触れない。
  *
+ * 【ログイン成功後・ログアウト後の戻り先について】
+ * どちらも app.frontend-base-url (フロントエンドのURL) に統一している。
+ * Oktaの「Sign-out redirect URIs」に登録した値と完全に一致させること。
+ *
  * 【CSRF対策について】
  * セッションCookie方式ではCSRF対策が必須となる。CookieCsrfTokenRepositoryを
  * 使い、CSRFトークンをCookie(XSRF-TOKEN)で配布する方式にしている。
  * フロントエンド側は、このCookieの値を読み取り、更新系リクエスト
  * (POST/PUT/DELETE)のヘッダー(X-XSRF-TOKEN)に載せて送り返す必要がある
- * (③のフロントエンド実装で対応する)。
+ * (api/client.tsで対応済み)。
  *
  * 【セッションアフィニティについて】
  * ロードバランサーのセッションアフィニティが有効な前提のため、
@@ -37,8 +40,8 @@ import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 @EnableWebSecurity
 public class SecurityConfig {
 
-    @Value("${app.post-logout-redirect-uri}")
-    private String postLogoutRedirectUri;
+    @Value("${app.frontend-base-url}")
+    private String frontendBaseUrl;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http, ClientRegistrationRepository clientRegistrationRepository)
@@ -52,7 +55,11 @@ public class SecurityConfig {
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .anyRequest().authenticated()
                 )
-                .oauth2Login(Customizer.withDefaults())
+                .oauth2Login(oauth2 -> oauth2
+                        // ログイン成功後、常にフロントエンドのトップページへ戻す
+                        // (true = 元々アクセスしようとしていたURLではなく、必ずこちらへ飛ばす)
+                        .defaultSuccessUrl(frontendBaseUrl, true)
+                )
                 .csrf(csrf -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()))
                 .logout(logout -> logout
                         .logoutSuccessHandler(oidcLogoutSuccessHandler(clientRegistrationRepository))
@@ -65,8 +72,7 @@ public class SecurityConfig {
             ClientRegistrationRepository clientRegistrationRepository) {
         OidcClientInitiatedLogoutSuccessHandler handler =
                 new OidcClientInitiatedLogoutSuccessHandler(clientRegistrationRepository);
-        // Oktaの「Sign-out redirect URIs」に登録した値と完全に一致させること
-        handler.setPostLogoutRedirectUri(postLogoutRedirectUri);
+        handler.setPostLogoutRedirectUri(frontendBaseUrl);
         return handler;
     }
 }

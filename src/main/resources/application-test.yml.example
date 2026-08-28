@@ -27,3 +27,7 @@ spring:
         provider:
           okta:
             issuer-uri: https://<あなたのOktaドメイン>/oauth2/default
+
+app:
+  # SecurityConfigが要求するため、ダミーでよいので入れておく必要がある
+  frontend-base-url: http://localhost:3000

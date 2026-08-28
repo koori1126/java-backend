@@ -32,6 +32,7 @@ app:
   cors:
     # フロントエンド(Next.js開発サーバー)からのアクセスを許可
     allowed-origins: http://localhost:3000
-  # ログアウト後にブラウザを戻す先(Oktaの「Sign-out redirect URIs」に
+  # フロントエンドのURL。ログイン成功後・ログアウト後、両方ともここへ戻す
+  # (Oktaの「Sign-out redirect URIs」に
   # 登録したものと完全に一致させること)
-  post-logout-redirect-uri: http://localhost:3000/
+  frontend-base-url: http://localhost:3000
