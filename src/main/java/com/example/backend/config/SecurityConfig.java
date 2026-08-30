@@ -1,5 +1,9 @@
 package com.example.backend.config;
 
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -9,6 +13,11 @@ import org.springframework.security.oauth2.client.oidc.web.logout.OidcClientInit
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfToken;
+import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+import java.io.IOException;
 
 /**
  * Okta(OIDC)によるログイン認証の設定。
@@ -29,6 +38,15 @@ import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
  * フロントエンド側は、このCookieの値を読み取り、更新系リクエスト
  * (POST/PUT/DELETE)のヘッダー(X-XSRF-TOKEN)に載せて送り返す必要がある
  * (api/client.tsで対応済み)。
+ *
+ * 【Spring Security 6.x特有の注意点】
+ * Spring Security 6.xでは、CSRFトークンをCookieに書き出す処理が「遅延実行」
+ * される仕様になっている。何もしないと、GETリクエストだけではCookieが
+ * 発行されないことがあり、フロントエンド側がトークンを読めずCSRFエラーに
+ * なる。そのため、CsrfTokenRequestAttributeHandlerを明示的に設定し、
+ * さらに全リクエストでトークンを強制的に読み出すフィルタ
+ * (csrfCookieFilter)を追加することで、確実にCookieが発行されるようにしている。
+ * (Spring公式の「CSRF対策 for SPA」ガイドに沿った標準的な対応)
  *
  * 【セッションアフィニティについて】
  * ロードバランサーのセッションアフィニティが有効な前提のため、
@@ -60,12 +78,35 @@ public class SecurityConfig {
                         // (true = 元々アクセスしようとしていたURLではなく、必ずこちらへ飛ばす)
                         .defaultSuccessUrl(frontendBaseUrl, true)
                 )
-                .csrf(csrf -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()))
+                .csrf(csrf -> csrf
+                        .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                        .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
+                )
+                // CSRFフィルタより後段で、必ずトークンを読み出させる(Cookie発行を強制する)
+                .addFilterAfter(csrfCookieFilter(), org.springframework.security.web.csrf.CsrfFilter.class)
                 .logout(logout -> logout
                         .logoutSuccessHandler(oidcLogoutSuccessHandler(clientRegistrationRepository))
                 );
 
         return http.build();
+    }
+
+    /**
+     * リクエストごとにCsrfTokenを明示的に読み出す(.getToken()を呼ぶ)ことで、
+     * 遅延書き込みされるCookieを、確実にレスポンスへ含めるようにするフィルタ。
+     */
+    private OncePerRequestFilter csrfCookieFilter() {
+        return new OncePerRequestFilter() {
+            @Override
+            protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
+                                             FilterChain filterChain) throws ServletException, IOException {
+                CsrfToken csrfToken = (CsrfToken) request.getAttribute("_csrf");
+                if (csrfToken != null) {
+                    csrfToken.getToken();
+                }
+                filterChain.doFilter(request, response);
+            }
+        };
     }
 
     private OidcClientInitiatedLogoutSuccessHandler oidcLogoutSuccessHandler(
