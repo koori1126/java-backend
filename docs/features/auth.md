@@ -9,6 +9,22 @@ BFF(フロントエンド専用の中間サーバー)は採用せず、**Spring 
 - ロードバランサーのセッションアフィニティが有効なため、Spring Bootのデフォルトのセッション管理(サーバーのメモリ上に保持)のままで成立する
 - 本番はNginxでフロント・バックエンドを同一オリジンに統合する方針のため、セッションCookieの送受信で複雑な設定が不要
 
+## TESLA側仕様との差分確認
+
+SSO連携先(TESLAプロジェクト)から提示されたOIDC仕様書と、本実装を突き合わせた結果は以下の通り。
+
+| 項目 | TESLA側仕様 | 本実装 | 状態 |
+|---|---|---|---|
+| 認証プロトコル | OIDC | OIDC | 一致 |
+| クライアント認証方式 | `client_secret_post` | `client_secret_post`(`application-local.yml`で明示指定) | **合わせた** |
+| PKCE | 利用する | 利用する(`SecurityConfig`の`pkceAuthorizationRequestResolver`) | **合わせた** |
+| SCOPE | `openid`のみ | `openid`, `profile`, `email` | 意図的に相違(PLEx側でユーザー氏名・メールを利用するため。TESLA側に理由を説明済み/説明予定) |
+| リフレッシュトークン | 利用しない | `offline_access`スコープを要求していないため、実質的に発行されない | 一致 |
+| REALMS | TESLA | (該当する概念なし。Oktaには「Realm」は存在しない) | 先方に確認・説明予定 |
+| CLIENT-ID | TESLA-APP | Okta管理画面上のアプリ表示名(Label)は`plex-backend`。Client ID自体はOktaが自動採番する固定形式の値であり、任意の文字列を指定することはできない | 先方に説明予定(「TESLA-APP」は表示名の希望として扱う) |
+
+**PKCE実装の技術的な補足**: `client_secret_post`(機密クライアント)であっても、OAuth 2.1のベストプラクティスに沿ってPKCEを併用する構成にしている。Spring Securityの`DefaultOAuth2AuthorizationRequestResolver`に`OAuth2AuthorizationRequestCustomizers.withPkce()`を設定することで、認可リクエストに`code_challenge`/`code_challenge_method`パラメータが自動的に付与される。
+
 ## ① Okta管理画面での設定
 
 概要のみ記載します(実際の画面操作の詳細は別途)。

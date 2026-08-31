@@ -16,6 +16,9 @@ spring:
             client-id: 0oa16xsljriBKDhgE698
             client-secret: bTZR5bNJdPSJxMDP4rqrjNzYU_CGdiAfQBKxf7xPWeITmUTaKpQTDkjnUvL8zLPV
             scope: openid, profile, email
+            # TESLA側の仕様(SSO連携先)に合わせて明示的に指定。
+            # 未指定の場合、Spring Securityは既定でclient_secret_basicを使う。
+            client-authentication-method: client_secret_post
         provider:
           okta:
             # Okta管理画面の Security > API > Authorization Servers > default

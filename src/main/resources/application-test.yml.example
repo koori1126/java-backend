@@ -24,6 +24,9 @@ spring:
             client-id: <Client IDを入力(local用と同じ値でよい)>
             client-secret: <Client Secretを入力(local用と同じ値でよい)>
             scope: openid, profile, email
+            # TESLA側の仕様(SSO連携先)に合わせて明示的に指定。
+            # 未指定の場合、Spring Securityは既定でclient_secret_basicを使う。
+            client-authentication-method: client_secret_post
         provider:
           okta:
             issuer-uri: https://<あなたのOktaドメイン>/oauth2/default

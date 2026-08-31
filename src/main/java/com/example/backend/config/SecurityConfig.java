@@ -11,6 +11,9 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.oauth2.client.oidc.web.logout.OidcClientInitiatedLogoutSuccessHandler;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
+import org.springframework.security.oauth2.client.web.DefaultOAuth2AuthorizationRequestResolver;
+import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestResolver;
+import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestCustomizers;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfToken;
@@ -27,6 +30,11 @@ import java.io.IOException;
  * OAuth2クライアントとしてOktaとやり取りし、セッションCookieでログイン状態を
  * 管理する方式(詳細は docs/features/auth.md を参照)。フロントエンドの
  * JavaScriptは、Oktaのトークンに一切触れない。
+ *
+ * 【SSO連携先(TESLA)の仕様との整合について】
+ * client_secret_post(application-local.ymlで設定)、PKCE(本クラスで設定)を、
+ * TESLA側のOIDC仕様に合わせて明示的に有効化している。詳細は
+ * docs/features/auth.md の「TESLA側仕様との差分確認」を参照。
  *
  * 【ログイン成功後・ログアウト後の戻り先について】
  * どちらも app.frontend-base-url (フロントエンドのURL) に統一している。
@@ -77,6 +85,10 @@ public class SecurityConfig {
                         // ログイン成功後、常にフロントエンドのトップページへ戻す
                         // (true = 元々アクセスしようとしていたURLではなく、必ずこちらへ飛ばす)
                         .defaultSuccessUrl(frontendBaseUrl, true)
+                        // PKCE(TESLA側の仕様で必須)を認可リクエストに付与する
+                        .authorizationEndpoint(authorization -> authorization
+                                .authorizationRequestResolver(pkceAuthorizationRequestResolver(clientRegistrationRepository))
+                        )
                 )
                 .csrf(csrf -> csrf
                         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
@@ -89,6 +101,20 @@ public class SecurityConfig {
                 );
 
         return http.build();
+    }
+
+    /**
+     * 認可コードフローにPKCE(code_verifier/code_challenge)を付与するリゾルバー。
+     * client_secret_postを使う機密クライアントでもPKCEを併用するのが
+     * 近年のベストプラクティス(OAuth 2.1)であり、TESLA側の仕様にも
+     * 合わせている。
+     */
+    private OAuth2AuthorizationRequestResolver pkceAuthorizationRequestResolver(
+            ClientRegistrationRepository clientRegistrationRepository) {
+        DefaultOAuth2AuthorizationRequestResolver resolver =
+                new DefaultOAuth2AuthorizationRequestResolver(clientRegistrationRepository, "/oauth2/authorization");
+        resolver.setAuthorizationRequestCustomizer(OAuth2AuthorizationRequestCustomizers.withPkce());
+        return resolver;
     }
 
     /**
